@@ -1,8 +1,9 @@
-/*
+-- Creating the database
 DROP DATABASE IF EXISTS coffee_shop_sales_db;
 CREATE DATABASE coffee_shop_sales_db;
 USE coffee_shop_sales_db;
 
+-- Creating the table
 DROP TABLE IF EXISTS transactions;
 CREATE TABLE transactions (
 	transaction_id INT,
@@ -17,83 +18,81 @@ CREATE TABLE transactions (
     product_type VARCHAR(30),
     product_detail VARCHAR(35)
 );
-										
+
+-- Loading the data into the table
 SHOW VARIABLES LIKE 'local_infile';
 
 LOAD DATA INFILE 'Coffee Shop Sales.csv' INTO TABLE transactions
 FIELDS TERMINATED BY ','
 IGNORE 1 LINES;
-*/
-/*
+
+-- Data Transformation
 UPDATE transactions
 SET transaction_date = STR_TO_DATE(transaction_date, '%d-%m-%Y');
 
 ALTER TABLE transactions
 MODIFY COLUMN transaction_date DATE;
-*/
 
-/* CREATING A NEW COLUMN: MONTH
-SELECT 
-	*,
-    MONTH(transaction_date) as month
-FROM transactions;
-
+-- Creating the Month column
 ALTER TABLE transactions
 ADD COLUMN month INT;
 
 UPDATE transactions
 SET month = MONTH(transaction_date);
-*/
 
-/* CREATING  A NEW COLUMN: MONTHNAME
+-- Creating MonthName column
 ALTER TABLE transactions
 ADD COLUMN month_name TEXT;
 
 UPDATE transactions
 SET month_name = MONTHNAME(transaction_date);
-*/
 
-
-/* CREATING A NEW COLUMN: HOUR
-SELECT 
-	*,
-    HOUR(transaction_time) AS hour
-FROM transactions;
-
+-- Creating Hour column
 ALTER TABLE transactions
 ADD COLUMN hour INT;
 
 UPDATE transactions
 SET hour = HOUR(transaction_time);
-*/
 
-/* CREATING A NEW COLUMN: REVENUE
-SELECT 
-	*,
-    transaction_qty * unit_price AS revenue
-FROM transactions;
-
+-- Creating a revenue column 
 ALTER TABLE transactions
 ADD COLUMN revenue FLOAT;
 
 UPDATE transactions
 SET revenue = transaction_qty * unit_price;
-*/
+
+-- Creating a day name column
+ALTER TABLE transactions
+ADD COLUMN day_name TEXT;
+
+UPDATE transactions
+SET day_name = DAYNAME(transaction_date);
+
+-- Creating a day column
+ALTER TABLE transactions
+ADD COLUMN day_of_week INT;
+
+UPDATE transactions
+SET day_of_week = DAY(transaction_date);
+
+ALTER TABLE transactions
+RENAME COLUMN day_of_week TO day_of_month;
+
 
 -- KPI Requirements
--- 1. Total Sales Analysis
+-- 1.1. Total Sales Analysis
 SELECT
 	CONCAT('$', ROUND(SUM(revenue)/1000), 'K') AS total_revenue
 FROM transactions;
 
--- Calculate the total sales for each respective month.
+-- 1.2. Calculate the total sales for each respective month.
 SELECT 
 	`month`,
     CONCAT('$', ROUND(SUM(revenue)/1000, 1), 'K') AS total_revenue
 FROM transactions
 GROUP BY `month`;
 
--- Determine the month-on-month increase or decrease in sales.
+-- 1.3. Determine the month-on-month increase or decrease in sales.
 WITH mom_sales AS (
 SELECT 
 	`month`,
@@ -109,7 +108,7 @@ SELECT
 FROM mom_sales
 ;
 
--- Calculate the difference in sales between the selected month and the previous month.
+-- 1.4. Calculate the difference in sales between the selected month and the previous month.
 WITH selected_month AS (
 SELECT 
 	`month`,
@@ -128,19 +127,19 @@ WHERE
 
 
 
--- 2. Total Order Analysis
+-- 2.1. Total Order Analysis
 SELECT
 	COUNT(transaction_id) AS total_orders
 FROM transactions;
 
--- Calculate the total number of orders for each respective month.
+-- 2.2. Calculate the total number of orders for each respective month.
 SELECT 
 	`month`,
     COUNT(transaction_id) AS total_orders
 FROM transactions
 GROUP BY `month`;
 
--- Determine the month-on-month increase or decrease in the number of orders.
+-- 2.3. Determine the month-on-month increase or decrease in the number of orders.
 WITH mom_orders AS (
 SELECT
 	`month`,
@@ -156,7 +155,7 @@ SELECT
     AS MoM_percentage
 FROM mom_orders;
 
--- Calculate the difference in the number of orders between the selected month 
+-- 2.4. Calculate the difference in the number of orders between the selected month 
 -- and the previous month.
 WITH selection AS (
 SELECT
@@ -175,19 +174,19 @@ WHERE
 
 
 
--- 3. Total Quantity Sold Analysis
+-- 3.1. Total Quantity Sold Analysis
 SELECT 
 	SUM(transaction_qty) AS total_qty_sold
 FROM transactions;
 
--- Calculate the total quantity sold for each respective month.
+-- 3.2. Calculate the total quantity sold for each respective month.
 SELECT 
 	`month`,
 	SUM(transaction_qty) AS total_qty_sold
 FROM transactions
 GROUP BY `month`;
 
--- Determine the month-on-month increase or decrease in the total quantity sold.
+-- 3.3. Determine the month-on-month increase or decrease in the total quantity sold.
 WITH mom_qty_sold AS (
 SELECT
 	`month`,
@@ -203,7 +202,7 @@ SELECT
     AS MoM_percentage
 FROM mom_qty_sold;
 
--- Calculate the difference in the total quantity sold between the selected month 
+-- 3.4. Calculate the difference in the total quantity sold between the selected month 
 -- and the previous month.
 WITH selected_month AS (
 SELECT
@@ -272,27 +271,8 @@ GROUP BY
 ORDER BY
 	total_sales DESC;
     
-/* CREATING A NEW COLUMN: DAYNAME 
-ALTER TABLE transactions
-ADD COLUMN day_name TEXT;
 
-UPDATE transactions
-SET day_name = DAYNAME(transaction_date);
-*/
-
-/* CREATING A NEW COLUMN: DAY
-ALTER TABLE transactions
-ADD COLUMN day_of_week INT;
-
-UPDATE transactions
-SET day_of_week = DAY(transaction_date);
-
-ALTER TABLE transactions
-RENAME COLUMN day_of_week TO day_of_month;
-*/
-
-
--- 3. Daily sales analysis with average line  
+-- 3. Daily sales analysis with an average line  
 WITH average_sales AS (
 SELECT
 	day_of_month,
